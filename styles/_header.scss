@@ -1,0 +1,16 @@
+.header {
+
+  &_form {
+    display: flex;
+    border: solid red 10px;
+  }
+}
+
+.is-invalid {
+  border: 2px solid red;
+}
+
+.feedback {
+  font-size: 1em;
+  color: red;
+}

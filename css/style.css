@@ -1,0 +1,13 @@
+.header_form {
+  display: flex;
+  border: solid red 10px;
+}
+
+.is-invalid {
+  border: 2px solid red;
+}
+
+.feedback {
+  font-size: 1em;
+  color: red;
+}/*# sourceMappingURL=style.css.map *//

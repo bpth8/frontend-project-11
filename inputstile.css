@@ -1,0 +1,9 @@
+/* стиль для инпута с классом is-invalid, который добавляется при ошибке */
+
+.header__form input.is-invalid {
+  border-color: #dc3545;
+}
+
+.text-danger {
+  color: #dc3545;
+}
