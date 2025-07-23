@@ -4,7 +4,8 @@
   "description": "[![Actions Status](https://github.com/bpth8/frontend-project-11/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/bpth8/frontend-project-11/actions)",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint ."
   },
   "repository": {
     "type": "git",
@@ -18,5 +19,11 @@
   "homepage": "https://github.com/bpth8/frontend-project-11#readme",
   "dependencies": {
     "bootstrap": "^5.3.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.31.0",
+    "eslint": "^9.31.0",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^16.3.0"
   }
 }
