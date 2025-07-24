@@ -1,3 +1,5 @@
+import 'bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import onChange from 'on-change';
 import i18next from 'i18next';
 import * as yup from 'yup';
@@ -36,7 +38,7 @@ const app = () => {
 
   // Элементы DOM
   const elements = {
-    form: document.querySelector('.header__form'),
+    form: document.querySelector('.rss-form'),
     formInput: document.querySelector('input[name="url"]'),
     submitButton: document.querySelector('button[type="submit"]'),
     feedbackElement: document.querySelector('.feedback'),
