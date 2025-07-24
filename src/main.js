@@ -83,39 +83,6 @@ const app = () => {
     return proxyUrl.toString()
   };
 
-  // функция парсинга XML в JS-объекты
-  // эта функция в отдельном файле parser.js
-  const parseRss = (xmlString, feedUrl) => {
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(xmlString, 'application/xml')
-
-    // тест наличие ошибок парсинга (например, parsererror)
-    const parserError = doc.querySelector('parsererror')
-    if (parserError) {
-      const errorText = parserError.textContent;
-      console.error('Ошибка парсинга XML:', errorText)
-      throw new Error('errors.parsingError') // ключ для локализации
-    }
-
-    // извлекаем данные фида
-    const feedTitle = doc.querySelector('channel > title').textContent
-    const feedDescription = doc.querySelector('channel > description').textContent
-
-    // извлекаем данные постов
-    const items = doc.querySelectorAll('item')
-    const posts = Array.from(items).map((item) => {
-      const title = item.querySelector('title').textContent
-      const link = item.querySelector('link').textContent
-      const description = item.querySelector('description').textContent
-      return { title, link, description, feedId: null, id: Date.now() + Math.random() }; // feedId будет установлен позже
-    })
-
-    return {
-      feed: { title: feedTitle, description: feedDescription, url: feedUrl, id: Date.now() },
-      posts,
-    }
-  }
-
   // контроллер
   elements.form.addEventListener('submit', (e) => {
     e.preventDefault()
