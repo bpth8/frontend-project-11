@@ -38,11 +38,10 @@ const renderPosts = (posts, container) => {
     a.textContent = post.title
     a.classList.add('fw-bold') // жирный текст для ссылки
 
-    li.append(a) // Пока только ссылка
-    // li.append(a, button); // Если добавите кнопку
+    li.append(a)
 
     ul.append(li)
-  });
+  })
   container.append(ul)
 }
 

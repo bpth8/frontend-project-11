@@ -70,9 +70,9 @@ const app = () => {
     // после того как поток был добавлен и форма очищена (состояние 'added'),
     // возвращаем состояние в 'filling' для следующего ввода.
     if (path === 'form.processState' && value === 'added') {
-      watchedState.form.processState = 'filling';
+      watchedState.form.processState = 'filling'
     }
-  });
+  })
 
   //спомогательные функции для работы с RSS
 
@@ -98,7 +98,7 @@ const app = () => {
     // вызов асинхр валидации
     validate(url, existingUrls)
       .then(() => { // успех валидации
-        const proxyUrl = getProxyUrl(url);
+        const proxyUrl = getProxyUrl(url)
         return axios.get(proxyUrl); // прокси запрос
       })
       .then((response) => {
@@ -106,33 +106,33 @@ const app = () => {
         const { feed, posts } = parseRss(contents, url); // парсинг RSS
 
         //присваиваем feedId каждому посту
-        const postsWithFeedId = posts.map(post => ({ ...post, feedId: feed.id }));
+        const postsWithFeedId = posts.map(post => ({ ...post, feedId: feed.id }))
 
-        watchedState.feeds.unshift(feed); // добавляем фид
-        watchedState.posts.unshift(...postsWithFeedId); // добавляем посты
+        watchedState.feeds.unshift(feed) // добавляем фид
+        watchedState.posts.unshift(...postsWithFeedId) // добавляем посты
 
-        watchedState.form.valid = true;
-        watchedState.form.error = null;
+        watchedState.form.valid = true
+        watchedState.form.error = null
         //установка состояния, чтобы вью сбросил форму
-        watchedState.form.processState = 'added';
+        watchedState.form.processState = 'added'
       })
       .catch((err) => {
         // ошибка, фалс
-        watchedState.form.valid = false;
+        watchedState.form.valid = false
         // yup помещает ключ ошибки в err.message
         watchedState.form.processState = 'failed'
 
         // проверка тип ошибки
         if (err.isAxiosError) {
           // ошибки сети
-          watchedState.networkError = 'errors.networkError'; // новый ключ для i18next
-          watchedState.form.error = 'errors.networkError'; // передача в форму для отображения
-          console.error('Ошибка сети:', err.message);
+          watchedState.networkError = 'errors.networkError' // новый ключ для i18next
+          watchedState.form.error = 'errors.networkError' // передача в форму для отображения
+          console.error('Ошибка сети:', err.message)
         } else if (err.message === 'errors.parsingError') {
           // ошибки парсинга, которые мы сами генерируем
-          watchedState.networkError = 'errors.parsingError';
-          watchedState.form.error = 'errors.parsingError';
-          console.error('Ошибка парсинга:', err.message);
+          watchedState.networkError = 'errors.parsingError'
+          watchedState.form.error = 'errors.parsingError'
+          console.error('Ошибка парсинга:', err.message)
         } else {
           // ошибки валидации (от yup)
           watchedState.form.error = err.message;
