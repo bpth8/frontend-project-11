@@ -1,10 +1,12 @@
-import 'bootstrap';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import onChange from 'on-change';
-import i18next from 'i18next';
-import * as yup from 'yup';
-import render from './view/render.js';
-import validate from './validation.js';
+import 'bootstrap'
+import 'bootstrap/dist/css/bootstrap.min.css'
+import onChange from 'on-change'
+import i18next from 'i18next'
+import * as yup from 'yup'
+import axios from 'axios'
+import parseRss from './parser.js'
+import render from './view/render.js'
+import validate from './validation.js'
 
 const app = () => {
   // настройка i18next для локализации сообщений об ошибках
@@ -19,6 +21,8 @@ const app = () => {
             invalidUrl: 'Ссылка должна быть валидным URL',
             duplicateUrl: 'RSS уже существует',
             required: 'Не должно быть пустым',
+            networkError: 'Ошибка сети. Проверьте подключение или попробуйте позже.',
+            parsingError: 'Ресурс не содержит валидный RSS',
           },
           success: 'RSS успешно загружен',
         },
@@ -42,6 +46,8 @@ const app = () => {
     formInput: document.querySelector('input[name="url"]'),
     submitButton: document.querySelector('button[type="submit"]'),
     feedbackElement: document.querySelector('.feedback'),
+    feedsContainer: document.querySelector('.feeds'), // контейнер для фидов
+    postsContainer: document.querySelector('.posts'), // контейнер для постов
   };
 
   // Состояние приложения (стэйт)
@@ -52,12 +58,14 @@ const app = () => {
       error: null,
     },
     feeds: [], // массив для хранения добавленных rss-потоков
+    posts: [], // массив для хранения постов
+    networkError: null, //состояние для ошибок парсинга
   };
 
   // View
   // оборачиваем состояние в прокси on-change, который вызывает render при любом изменении
   const watchedState = onChange(state, (path, value) => {
-    render(state, elements, i18nextInstance);
+    render(watchedState, elements, i18nextInstance);
 
     // после того как поток был добавлен и форма очищена (состояние 'added'),
     // возвращаем состояние в 'filling' для следующего ввода.
@@ -66,39 +74,106 @@ const app = () => {
     }
   });
 
+  //спомогательные функции для работы с RSS
+
+  const getProxyUrl = (url) => {
+    const proxyUrl = new URL('https://allorigins.hexlet.app/get')
+    proxyUrl.searchParams.set('disableCache', 'true')
+    proxyUrl.searchParams.set('url', url)
+    return proxyUrl.toString()
+  };
+
+  // функция парсинга XML в JS-объекты
+  // эта функция в отдельном файле parser.js
+  const parseRss = (xmlString, feedUrl) => {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(xmlString, 'application/xml')
+
+    // тест наличие ошибок парсинга (например, parsererror)
+    const parserError = doc.querySelector('parsererror')
+    if (parserError) {
+      const errorText = parserError.textContent;
+      console.error('Ошибка парсинга XML:', errorText)
+      throw new Error('errors.parsingError') // ключ для локализации
+    }
+
+    // извлекаем данные фида
+    const feedTitle = doc.querySelector('channel > title').textContent
+    const feedDescription = doc.querySelector('channel > description').textContent
+
+    // извлекаем данные постов
+    const items = doc.querySelectorAll('item')
+    const posts = Array.from(items).map((item) => {
+      const title = item.querySelector('title').textContent
+      const link = item.querySelector('link').textContent
+      const description = item.querySelector('description').textContent
+      return { title, link, description, feedId: null, id: Date.now() + Math.random() }; // feedId будет установлен позже
+    })
+
+    return {
+      feed: { title: feedTitle, description: feedDescription, url: feedUrl, id: Date.now() },
+      posts,
+    }
+  }
+
   // контроллер
   elements.form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const url = formData.get('url').trim();
+    e.preventDefault()
+    const formData = new FormData(e.target)
+    const url = formData.get('url').trim()
 
     // переводим форму в состояние отправки
-    watchedState.form.processState = 'sending';
+    watchedState.form.processState = 'sending'
+    watchedState.networkError = null
 
-    const existingUrls = watchedState.feeds.map((feed) => feed.url);
+    const existingUrls = watchedState.feeds.map((feed) => feed.url)
 
     // вызов асинхр валидации
     validate(url, existingUrls)
-      .then((validUrl) => {
-        // успех валидации
+      .then(() => { // успех валидации
+        const proxyUrl = getProxyUrl(url);
+        return axios.get(proxyUrl); // прокси запрос
+      })
+      .then((response) => {
+        const { contents } = response.data; // получение содержимого RSS
+        const { feed, posts } = parseRss(contents, url); // парсинг RSS
+
+        //присваиваем feedId каждому посту
+        const postsWithFeedId = posts.map(post => ({ ...post, feedId: feed.id }));
+
+        watchedState.feeds.unshift(feed); // добавляем фид
+        watchedState.posts.unshift(...postsWithFeedId); // добавляем посты
+
         watchedState.form.valid = true;
         watchedState.form.error = null;
-        
-        const newFeed = { url: validUrl, id: Date.now() };
-        watchedState.feeds.unshift(newFeed);
-
-        // установка состояния, чтобы вью сбросил форму
+        //установка состояния, чтобы вью сбросил форму
         watchedState.form.processState = 'added';
       })
       .catch((err) => {
         // ошибка, фалс
         watchedState.form.valid = false;
         // yup помещает ключ ошибки в err.message
-        watchedState.form.error = err.message;
-        watchedState.form.processState = 'failed';
-      });
-  });
-};
+        watchedState.form.processState = 'failed'
+
+        // проверка тип ошибки
+        if (err.isAxiosError) {
+          // ошибки сети
+          watchedState.networkError = 'errors.networkError'; // новый ключ для i18next
+          watchedState.form.error = 'errors.networkError'; // передача в форму для отображения
+          console.error('Ошибка сети:', err.message);
+        } else if (err.message === 'errors.parsingError') {
+          // ошибки парсинга, которые мы сами генерируем
+          watchedState.networkError = 'errors.parsingError';
+          watchedState.form.error = 'errors.parsingError';
+          console.error('Ошибка парсинга:', err.message);
+        } else {
+          // ошибки валидации (от yup)
+          watchedState.form.error = err.message;
+          watchedState.networkError = null; // нет ошибки сети/парсинга
+        }
+      })
+  })
+}
 
 // Запуск приложения
-app();
+app()

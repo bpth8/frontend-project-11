@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/bpth8/frontend-project-11#readme",
   "dependencies": {
+    "axios": "^1.11.0",
     "bootstrap": "^5.3.7",
     "i18next": "^25.3.2",
     "on-change": "^5.0.1",
