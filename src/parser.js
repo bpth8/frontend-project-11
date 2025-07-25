@@ -1,3 +1,6 @@
+// фукнция которая парсит XML файл rss потока (xmlString) и возвращает информацию о фидах (feedUrl) и постах
+// данные о фиде, это заголовок, описание, url, id
+
 const parseRss = (xmlString, feedUrl) => {
   const parser = new DOMParser()
   const doc = parser.parseFromString(xmlString, 'application/xml')
