@@ -5,8 +5,125 @@ import i18next from 'i18next'
 import * as yup from 'yup'
 import axios from 'axios'
 import parseRss from './parser.js'
-import render from './view/render.js'
 import validate from './validation.js'
+
+const renderFeeds = (feeds, container) => {
+  const card = document.createElement('div');
+  card.classList.add('card', 'border-0');
+  const cardBody = document.createElement('div');
+  cardBody.classList.add('card-body');
+  const h2 = document.createElement('h2');
+  h2.classList.add('card-title', 'h4');
+  h2.textContent = 'Фиды';
+  cardBody.append(h2);
+  card.append(cardBody);
+
+  const ul = document.createElement('ul');
+  ul.classList.add('list-group', 'border-0', 'rounded-0');
+
+  feeds.forEach((feed) => {
+    const li = document.createElement('li');
+    li.classList.add('list-group-item', 'border-0', 'border-end-0');
+
+    const h3 = document.createElement('h3');
+    h3.classList.add('h6', 'm-0');
+    h3.textContent = feed.title;
+    const p = document.createElement('p');
+    p.classList.add('m-0', 'small', 'text-black-50');
+    p.textContent = feed.description;
+
+    li.append(h3, p);
+    ul.append(li);
+  });
+  card.append(ul);
+  container.innerHTML = '';
+  container.append(card);
+};
+
+const renderPosts = (posts, container, viewedPostsIds) => {
+  const card = document.createElement('div');
+  card.classList.add('card', 'border-0');
+  const cardBody = document.createElement('div');
+  cardBody.classList.add('card-body');
+  const h2 = document.createElement('h2');
+  h2.classList.add('card-title', 'h4');
+  h2.textContent = 'Посты';
+  cardBody.append(h2);
+  card.append(cardBody);
+
+  const ul = document.createElement('ul');
+  ul.classList.add('list-group', 'border-0', 'rounded-0');
+
+  posts.forEach((post) => {
+    const li = document.createElement('li');
+    li.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-start', 'border-0', 'border-end-0');
+
+    const a = document.createElement('a');
+    a.setAttribute('href', post.link);
+    a.setAttribute('target', '_blank');
+    a.setAttribute('rel', 'noopener noreferrer');
+    a.setAttribute('data-id', post.id);
+    const fontWeightClass = viewedPostsIds.has(post.id) ? 'fw-normal' : 'fw-bold';
+    a.classList.add(fontWeightClass);
+    a.textContent = post.title;
+
+    const button = document.createElement('button');
+    button.setAttribute('type', 'button');
+    button.classList.add('btn', 'btn-outline-primary', 'btn-sm');
+    button.setAttribute('data-id', post.id);
+    button.setAttribute('data-bs-toggle', 'modal');
+    button.setAttribute('data-bs-target', '#modal');
+    button.textContent = 'Просмотр';
+
+    li.append(a, button);
+    ul.append(li);
+  });
+  card.append(ul);
+  container.innerHTML = '';
+  container.append(card);
+};
+
+const renderModal = (postId, posts, elements) => {
+  const post = posts.find((p) => p.id === postId);
+  if (post) {
+    elements.modalTitle.textContent = post.title;
+    elements.modalBody.textContent = post.description;
+    elements.fullArticleLink.setAttribute('href', post.link);
+  }
+};
+
+const render = (state, elements, i18n) => {
+  const { formInput, feedbackElement, submitButton, feedsContainer, postsContainer } = elements;
+
+  submitButton.disabled = state.form.processState === 'sending';
+
+  if (state.form.valid) {
+    formInput.classList.remove('is-invalid');
+    feedbackElement.textContent = '';
+  } else {
+    formInput.classList.add('is-invalid');
+    const errorMessageKey = state.networkError || state.form.error;
+    feedbackElement.textContent = i18n.t(errorMessageKey);
+  }
+
+  if (state.form.processState === 'added') {
+    formInput.value = '';
+    formInput.focus();
+    feedbackElement.classList.remove('text-danger');
+    feedbackElement.classList.add('text-success');
+    feedbackElement.textContent = i18n.t('success');
+  } else {
+    feedbackElement.classList.remove('text-success');
+    feedbackElement.classList.add('text-danger');
+  }
+
+  renderFeeds(state.feeds, feedsContainer);
+  renderPosts(state.posts, postsContainer, state.ui.viewedPostsIds);
+
+  if (state.ui.modal.postId) {
+    renderModal(state.ui.modal.postId, state.posts, elements);
+  }
+};
 
 const app = () => {
   // настройка i18next для локализации сообщений об ошибках
@@ -152,7 +269,6 @@ const app = () => {
         setTimeout(updateFeeds, 5000)
       })
   }
-
 
   // контроллер
   elements.form.addEventListener('submit', (e) => {
