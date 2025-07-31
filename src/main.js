@@ -83,6 +83,58 @@ const app = () => {
     return proxyUrl.toString()
   };
 
+  // функция для получения и парсинга постов из одного фида
+  const fetchPosts = (feedUrl, feedId) => {
+    const proxyUrl = getProxyUrl(feedUrl)
+    return axios.get(proxyUrl)
+      .then((response) => {
+        const { contents } = response.data
+        const { posts } = parseRss(contents, feedUrl)
+        return posts.map(post => ({ ...post, feedId }))
+      })
+      .catch((error) => {
+        console.error(`Ошибка при получении или парсинге RSS для ${feedUrl}:`, error)
+        throw error
+      })
+  }
+
+  // функция для периодического обновления всех фидов
+  const updateFeeds = () => {
+    const updatePromises = watchedState.feeds.map((feed) =>
+      fetchPosts(feed.url, feed.id)
+        .then((newPosts) => {
+          // получение постов, которые уже есть для текущего фида
+          const existingPostLinks = watchedState.posts
+            .filter((post) => post.feedId === feed.id)
+            .map((post) => post.link)
+
+          // фильтр новых постов, оставляя только те, которых еще нет
+          const uniqueNewPosts = newPosts.filter(
+            (newPost) => !existingPostLinks.includes(newPost.link)
+          )
+
+          // добавление уникальных новых постов в начало массива posts
+          if (uniqueNewPosts.length > 0) {
+            watchedState.posts.unshift(...uniqueNewPosts);
+          }
+        })
+        .catch((err) => {
+          // здесь можно обработать ошибку обновления конкретного фида,
+          // но не влиять на обновление других фидов
+          // например, можно записать в лог или изменить состояние фида,
+          // чтобы показать, что он временно недоступен
+          console.error(`Ошибка обновления фида ${feed.url}:`, err);
+        })
+    )
+
+    // ожидание завершения всех запросов обновления, и установка таймаута
+    Promise.allSettled(updatePromises)
+      .finally(() => {
+        setTimeout(updateFeeds, 5000)
+      })
+  }
+
+
   // контроллер
   elements.form.addEventListener('submit', (e) => {
     e.preventDefault()
@@ -115,6 +167,10 @@ const app = () => {
         watchedState.form.error = null
         //установка состояния, чтобы вью сбросил форму
         watchedState.form.processState = 'added'
+        // инициализация обновления после добавления фида или если это первый фид
+        if (watchedState.feeds.length === 1) {
+          setTimeout(updateFeeds, 5000); // запуск цикла обновления после успешного добавления первого фида
+        }
       })
       .catch((err) => {
         // ошибка, фалс
