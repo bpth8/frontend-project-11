@@ -48,6 +48,10 @@ const app = () => {
     feedbackElement: document.querySelector('.feedback'),
     feedsContainer: document.querySelector('.feeds'), // контейнер для фидов
     postsContainer: document.querySelector('.posts'), // контейнер для постов
+    modal: document.getElementById('modal'), // модальное окно
+    modalTitle: document.querySelector('.modal-title'), // заголовок модального окна
+    modalBody: document.querySelector('.modal-body'),   // тело модального окна (описание)
+    fullArticleLink: document.querySelector('.full-article'), // ссылка "Читать полностью"
   };
 
   // Состояние приложения (стэйт)
@@ -60,17 +64,36 @@ const app = () => {
     feeds: [], // массив для хранения добавленных rss-потоков
     posts: [], // массив для хранения постов
     networkError: null, //состояние для ошибок парсинга
-  };
+     ui: { // новый раздел для UI-состояния
+      viewedPostsIds: new Set(), // Set для быстрого поиска просмотренных ID
+      modal: {
+        postId: null, // ID поста, который открыт в модальном окне
+      },
+    },
+  }
 
   // View
   // оборачиваем состояние в прокси on-change, который вызывает render при любом изменении
   const watchedState = onChange(state, (path, value) => {
-    render(watchedState, elements, i18nextInstance);
+    render(watchedState, elements, i18nextInstance)
 
     // после того как поток был добавлен и форма очищена (состояние 'added'),
     // возвращаем состояние в 'filling' для следующего ввода.
     if (path === 'form.processState' && value === 'added') {
       watchedState.form.processState = 'filling'
+    }
+  })
+
+  // обработчик событий для кнопок предпросмотра
+  elements.postsContainer.addEventListener('click', (e) => {
+    // проверка, что клик был по кнопке 'Просмотр'
+    if (e.target.dataset.bsToggle === 'modal' && e.target.dataset.id) {
+      const postId = e.target.dataset.id;
+      // адд ID поста в список просмотренных
+      const numericPostId = Number(postId)
+      watchedState.ui.viewedPostsIds.add(postId);
+      // инсталл ID поста для модального окна
+      watchedState.ui.modal.postId = numericPostId;
     }
   })
 
